@@ -1,7 +1,7 @@
 Leetcode Easy
 
 175. Join 
-	• Left join == left outer join , left join 默认是 outer 属性的
+	• Left oin == left outer join , left join 默认是 outer 属性的
 	• 没有 left inner join, 因为 inner join 就是取交集
 
 176. SecondHighestSalary
