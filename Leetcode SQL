@@ -1,0 +1,270 @@
+Leetcode Easy
+
+175. Join 
+	• Left join == left outer join , left join 默认是 outer 属性的
+	• 没有 left inner join, 因为 inner join 就是取交集
+
+176. SecondHighestSalary
+
+	select MAX(Salary) from Employee WHERE Salary NOT IN (select MAX(Salary) from Employee ); 
+	
+	SELECT max(salary) FROM Employee WHERE salary < (SELECT max(salary) FROM Employee);
+	
+	SELECT TOP 1 salary 
+	FROM ( SELECT TOP 2 salary FROM employees ORDER BY salary DESC) AS emp 
+	ORDER BY salary ASC
+	
+	SELECT IFNULL(
+	(select Salary as SecondHighestSalary
+	from Employee
+	group by Salary
+	order by Salary desc      顺序：先 where，再 group by，再 order by, having /// order by 默认是升序
+	limit 1, 1),NULL)	              limit m,n 从第 m 行起，返回 n 行
+	SecondHighestSalary
+	
+	IFNULL(expr1,expr2)的用法：
+	假如 expr1 不为 NULL，则 IFNULL() 的返回值为 expr1;
+	否则其返回值为expr2。
+
+181. Employees Earning More Than Their Managers  --self join 
+
+	select e.Name as Employee
+	from Employee e
+	left join Employee m
+	on e.ManagerId = m.Id
+	where e.ManagerId IS NOT NULL
+	and e.Salary > m.Salary
+
+182. Duplicate Emails	--self join
+
+	select distinct(p1.Email)
+	from Person p1
+	left join Person p2
+	on p1.Email = p2.Email
+	where p1.Id <> p2.Id 
+
+183. Customers Who Never Order
+
+	select c.Name as Customers
+	from Customers c
+	left join Orders o
+	on c.Id = o.CustomerId
+	where o.CustomerId IS NULL
+
+196. Delete Duplicate Emails
+
+	SELECT p1.*
+	FROM Person p1,
+    Person p2
+	WHERE
+    p1.Email = p2.Email AND p1.Id > p2.Id;
+	
+	DELETE p 
+	from Person p, Person q 
+	where p.Id > q.Id AND q.Email=p.Email 
+	
+	使用 delete 删除多表关联的数据三种语句：
+	• Delete from t1 where  
+	• Delete t1 from t1 where
+	• Delete t1 from t1, t2 where 
+
+197. Rising Temperature
+
+	select w2.Id
+	from Weather w1, Weather w2
+	# where w1.Date + 1 = w2.Date 	错的，因为不能考虑上个月末，这个月初的情况
+	# where TO_DAYS(w2.date)-TO_DAYS(w1.date)= 1
+	where datediff(w2.date, w1.date)= 1
+	and w2.Temperature > w1.Temperature
+
+596. Classes More Than 5 Students
+
+	having是分组（group by）后的筛选条件，分组后的数据组内再筛选
+	where则是在分组前筛选
+	select class
+	from courses
+	group by class
+	having count(distinct student ) >= 5
+
+620. Not Boring Movies
+	select *
+	from cinema
+	where description != 'boring' 
+	and (id%2) = 1		选奇数
+	order by rating desc
+	
+627. Swap Salary
+	update salary   
+	set sex = CASE sex WHEN 'f' THEN 'm' ELSE 'f' END
+	两个新知识点：
+	• Update       UPDATE 表名称 SET 列名称 = 新值 WHERE 列名称 = 某值
+	• Case when语句   
+		--简单case函数
+		case sex
+	  	when '1' then '男'
+	  	when '2' then '女’
+	  	else '其他' end
+
+Leetcode Medium
+
+177. Nth Highest Salary
+
+	CREATE FUNCTION getNthHighestSalary(N INT) RETURNS INT
+	BEGIN
+	  	declare x int;
+		set N = N - 1;
+		set x = (select distinct Salary from Employee order by Salary desc limit N, 1);
+		if isnull(x)
+			then
+			return null;
+		else
+			return x;
+		end if;  
+	END
+	
+	解释：
+	把所有 salary 去重后排序，然后通过 limit 方法取出第 n 大的数
+	limit 后面不能直接写 N-1，因为 limit 后面不能跟表达式
+	
+178. Rank Scores
+
+	要求对分数加一列排名，可以并列名次
+	
+	select  
+	  Score,  
+	  (select count(distinct Score) from Scores where Score >= s.Score) as Rank  
+	from Scores s  
+	order by Score desc 
+	
+	如何理解？--> 相当于对每一个数，统计比这个数大的有多少个，相应的个数为新的一栏
+	
+180. Consecutive Numbers
+
+	select distinct(l1.Num) as ConsecutiveNums
+	from Logs l1, Logs l2, Logs l3
+	where l1.Id = l2.Id - 1 and l1.Id = l3.Id-2
+	and l1.Num = l2.Num and l2.Num = l3.Num
+	
+184. Department Highest Salary
+
+	SELECT
+    DepartmentId, MAX(Salary)
+	FROM
+    Employee
+	GROUP BY DepartmentId;
+	
+	SELECT DeptName, MAX(Salary) 
+	FROM Employee e RIGHT JOIN Department d 
+	ON e.DeptId = d.DeptID 
+	GROUP BY DeptName;
+	
+	我的解法：
+	
+	select d.Name as Department, e.Name as Employee, e.Salary as Salary
+	from Employee e
+	inner join Department d
+	on e.DepartmentId = d.Id 
+	where (select count(distinct salary) from Employee where Salary >e.Salary and DepartmentId = d.Id) =0
+	order by e.Salary , e.Name desc
+	
+	参考答案： 使用 max 函数
+	
+	select d.Name as Department, e.Name as Employee, e.Salary as Salary
+	from Employee e
+	join Department d
+	on e.DepartmentId = d.Id
+	where (e.DepartmentId , Salary) 
+	IN (select DepartmentId, MAX(Salary)
+	    from Employee
+	    group by DepartmentId)
+			
+626. Exchange Seats 条件句中的条件句
+	
+	select
+	if(
+	    id < (select count(*) from seat),  	if 的条件是最后一个 id 的话
+	    if( mod(id,2) = 0, id-1, id+1),       是偶数的话，和上一个交换；是奇数的话，和下一个交换
+	    if( mod(id,2) =0, id-1, id)     如果是最后一个 id，是偶数，就和上一个交换；是奇数，就不变，因为没有下一数了
+	) as id, student
+	from seat
+	order by id
+	
+	IF(condition, value_if_true, value_if_false)
+	
+	例子：
+	SELECT OrderID, Quantity, IF(Quantity>10, "MORE", "LESS")
+	FROM OrderDetails;
+	刚开始自己的思路是交换名字，而不是交换 id，
+	交换名字的话在 if 里面就有 subquery，运行不出来，
+	其实可以打乱顺序，交换 id，最后再排一下序
+	
+
+Leetcode Hard
+
+185. Department Top Three Salaries
+	
+	select d.Name as Department, e.Name as Employee, e.Salary
+	from Employee e
+	inner join Department d
+	on e.DepartmentId = d.Id
+	where
+	(select count(distinct Salary)
+	from Employee
+	where Salary>e.Salary
+	and DepartmentId = d.Id
+	) < 3
+	order by d.Name, e.Salary desc
+	
+	每个部门选出前三工资的人，再 where 条件中，加 比当前表格里工资大的最多只有两个
+	不是很容易想到
+	
+601. Human Traffic of Stadium
+	
+	仔细分析你会发现只要满足以上三个条件就能找到结果：
+		1.	id in (n, n+1,n+2)的记录里people>=100
+		2.	id in (n, n-1,n+1)的记录里people>=100
+		3.	id in (n, n-1,n-2)的记录里people>=100
+	
+	select id, date, people
+	from stadium
+	where 
+	(id in (select id from stadium where people >= 100)
+	and id+1 in (select id from stadium where people >= 100)
+	and id+2 in (select id from stadium where people >= 100))
+	or
+	(id in (select id from stadium where people >= 100)
+	and id+1 in (select id from stadium where people >= 100)
+	and id-1 in (select id from stadium where people >= 100))
+	or
+	(id in (select id from stadium where people >= 100)
+	and id-1 in (select id from stadium where people >= 100)
+	and id-2 in (select id from stadium where people >= 100))
+	
+262. Trips and Users ⭐️⭐️
+
+	解法一：
+	
+	select Request_at as Day
+	       round(count(if(Status != 'completed', true, null)) / count(*), 2) as 'Cancellation Rate'
+	from Trips
+	where (Request_at between '2013-10-01' and '2013-10-03')
+	      and Client_id not in (select Users_Id from Users where Banned = 'Yes')
+	group by Request_at
+	
+	新的一列，是先加总，再求比例算 ratio，
+	• 很巧妙地，没有使用 join 就把两个表的数据都用上了，其中一个表只提供一个小小的筛选条件，所以这个表只出现在 where 语句中；
+	• 在计算 ratio 中，使用了 if 判断语句，直接加总，而避免加新的一列，方便。以后可以在加一栏求比例的 column 时考虑使用 if 语句
+	
+	解法二：
+	select 
+	t.Request_at Day, 
+	round(sum(case when t.Status like 'cancelled_%' then 1 else 0 end)/count(*),2) Rate
+	from Trips t 
+	inner join Users u 
+	on t.Client_Id = u.Users_Id and u.Banned='No'
+	where t.Request_at between '2013-10-01' and '2013-10-03'
+	group by t.Request_at
+	
+	
+	其他知识点：
+Join 条件中可以加 or ，而且需要count 总的，条件可以在 join 中，不一定非要写在 where 里
